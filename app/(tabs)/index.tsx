@@ -1,7 +1,11 @@
 import { useAuth } from '@/contexts/auth-context';
+import { formatTransactionTime, useWallet } from '@/hooks/use-wallet';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React from 'react';
 import {
+    ActivityIndicator,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -10,54 +14,103 @@ import {
 } from 'react-native';
 
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { 
+    wallet, 
+    transactions, 
+    isLoading, 
+    hasWallet, 
+    refreshWallet, 
+    refreshTransactions 
+  } = useWallet();
+  const [refreshing, setRefreshing] = React.useState(false);
 
-  // Mock data - replace with actual data from your backend
-  const totalBalance = 1240.50;
-  const kesEquivalent = 185200.00;
-  const walletAddress = '0.0.1284591';
+  // Get display values from wallet or defaults
+  const totalBalance = wallet?.balance ?? 0;
+  const hbarBalance = wallet?.hbar_balance ?? 0;
+  const kesEquivalent = totalBalance * 149.50; // Mock rate
+  const walletAddress = wallet?.hedera_account_id ?? 'No wallet';
 
-  const recentActivities = [
-    {
-      id: '1',
-      title: 'Payment from John D.',
-      location: 'Canada',
-      time: 'Today, 10:45 AM',
-      amount: 450.00,
-      type: 'credit',
-      status: 'SUCCESS',
-    },
-    {
-      id: '2',
-      title: 'M-Pesa Withdrawal',
-      location: 'To 0712***789',
-      time: 'Yesterday',
-      amount: -200.00,
-      type: 'debit',
-      status: 'COMPLETED',
-    },
-    {
-      id: '3',
-      title: 'Freelance Gig UI/UX',
-      location: 'Germany',
-      time: '2 days ago',
-      amount: 850.00,
-      type: 'credit',
-      status: 'SUCCESS',
-    },
-    {
-      id: '4',
-      title: 'SaucerSwap Yield',
-      location: 'Reward Distribution',
-      time: 'Weekly',
-      amount: 12.45,
-      type: 'yield',
-      status: 'AUTO-STAKED',
-    },
-  ];
+  // Map transactions to activity format
+  const recentActivities = transactions.length > 0 
+    ? transactions.slice(0, 5).map(tx => ({
+        id: tx.id,
+        title: tx.title,
+        location: tx.counterparty || tx.location || '',
+        time: formatTransactionTime(tx.created_at),
+        amount: tx.type === 'debit' || tx.type === 'withdrawal' ? -tx.amount : tx.amount,
+        type: tx.type,
+        status: tx.status.toUpperCase().replace('_', '-'),
+      }))
+    : []; // Empty if no transactions
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refreshWallet(), refreshTransactions()]);
+    setRefreshing(false);
+  }, [refreshWallet, refreshTransactions]);
+
+  // Show wallet setup prompt if no wallet
+  if (!isLoading && !hasWallet) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.profileCircle}>
+              <Ionicons name="person" size={24} color="#00D9FF" />
+            </View>
+            <View style={styles.headerCenter}>
+              <Text style={styles.headerTitle}>HEDERA NETWORK</Text>
+              <Text style={styles.dashboardTitle}>Home</Text>
+            </View>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.noWalletContainer}>
+          <View style={styles.noWalletIcon}>
+            <Ionicons name="wallet-outline" size={64} color="#00D9FF" />
+          </View>
+          <Text style={styles.noWalletTitle}>Set Up Your Wallet</Text>
+          <Text style={styles.noWalletSubtitle}>
+            Create a Hedera wallet to start receiving payments and earning yield.
+          </Text>
+          <TouchableOpacity 
+            style={styles.setupWalletButton}
+            onPress={() => router.push('/(tabs)/wallet-setup')}
+          >
+            <Ionicons name="add-circle" size={24} color="#0A1F2B" />
+            <Text style={styles.setupWalletButtonText}>Create Wallet</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#00D9FF" />
+        <Text style={styles.loadingText}>Loading wallet...</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#00D9FF"
+          colors={['#00D9FF']}
+        />
+      }
+    >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
@@ -66,7 +119,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>HEDERA NETWORK</Text>
-            <Text style={styles.dashboardTitle}>Dashboard</Text>
+            <Text style={styles.dashboardTitle}>Home</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
@@ -81,8 +134,9 @@ export default function HomeScreen() {
             <Text style={styles.balanceLabel}>Total Balance</Text>
             <Text style={styles.balanceAmount}>{totalBalance.toFixed(2)} USDC</Text>
             <Text style={styles.balanceKes}>≈ {kesEquivalent.toLocaleString()} KES</Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '65%' }]} />
+            <View style={styles.hbarBalanceRow}>
+              <Ionicons name="flash" size={14} color="#9333ea" />
+              <Text style={styles.hbarBalance}>{hbarBalance.toFixed(4)} HBAR</Text>
             </View>
             <Text style={styles.walletAddress}>{walletAddress}</Text>
           </View>
@@ -117,54 +171,68 @@ export default function HomeScreen() {
       <View style={styles.recentActivity}>
         <View style={styles.activityHeader}>
           <Text style={styles.activityTitle}>Recent Activity</Text>
-          <TouchableOpacity>
-            <Text style={styles.viewAllText}>View All</Text>
-          </TouchableOpacity>
+          {recentActivities.length > 0 && (
+            <TouchableOpacity>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {recentActivities.map((activity) => (
-          <View key={activity.id} style={styles.activityItem}>
-            <View style={styles.activityIcon}>
-              <Ionicons
-                name={
-                  activity.type === 'credit'
-                    ? 'arrow-down'
-                    : activity.type === 'yield'
-                    ? 'trending-up'
-                    : 'arrow-up'
-                }
-                size={20}
-                color="#00D9FF"
-              />
-            </View>
-            <View style={styles.activityDetails}>
-              <Text style={styles.activityName}>{activity.title}</Text>
-              <Text style={styles.activityLocation}>
-                {activity.location} • {activity.time}
-              </Text>
-            </View>
-            <View style={styles.activityRight}>
-              <Text
-                style={[
-                  styles.activityAmount,
-                  activity.type === 'debit' && styles.activityAmountDebit,
-                ]}
-              >
-                {activity.amount > 0 ? '+' : ''}
-                {activity.amount.toFixed(2)} USDC
-              </Text>
-              <Text
-                style={[
-                  styles.activityStatus,
-                  activity.status === 'SUCCESS' && styles.activityStatusSuccess,
-                  activity.status === 'AUTO-STAKED' && styles.activityStatusYield,
-                ]}
-              >
-                {activity.status}
-              </Text>
-            </View>
+        {recentActivities.length === 0 ? (
+          <View style={styles.emptyActivity}>
+            <Ionicons name="receipt-outline" size={48} color="#8B9BA8" />
+            <Text style={styles.emptyActivityTitle}>No Transactions Yet</Text>
+            <Text style={styles.emptyActivitySubtitle}>
+              Your transaction history will appear here
+            </Text>
           </View>
-        ))}
+        ) : (
+          recentActivities.map((activity) => (
+            <View key={activity.id} style={styles.activityItem}>
+              <View style={styles.activityIcon}>
+                <Ionicons
+                  name={
+                    activity.type === 'credit' || activity.type === 'deposit'
+                      ? 'arrow-down'
+                      : activity.type === 'yield'
+                      ? 'trending-up'
+                      : 'arrow-up'
+                  }
+                  size={20}
+                  color="#00D9FF"
+                />
+              </View>
+              <View style={styles.activityDetails}>
+                <Text style={styles.activityName}>{activity.title}</Text>
+                <Text style={styles.activityLocation}>
+                  {activity.location} {activity.location && '• '}{activity.time}
+                </Text>
+              </View>
+              <View style={styles.activityRight}>
+                <Text
+                  style={[
+                    styles.activityAmount,
+                    (activity.type === 'debit' || activity.type === 'withdrawal') && 
+                      styles.activityAmountDebit,
+                  ]}
+                >
+                  {activity.amount > 0 ? '+' : ''}
+                  {activity.amount.toFixed(2)} USDC
+                </Text>
+                <Text
+                  style={[
+                    styles.activityStatus,
+                    (activity.status === 'SUCCESS' || activity.status === 'COMPLETED') && 
+                      styles.activityStatusSuccess,
+                    activity.status === 'AUTO-STAKED' && styles.activityStatusYield,
+                  ]}
+                >
+                  {activity.status}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
       </View>
     </ScrollView>
   );
@@ -174,6 +242,80 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0A1F2B',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8B9BA8',
+  },
+  noWalletContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  noWalletIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#1A3544',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  noWalletTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  noWalletSubtitle: {
+    fontSize: 16,
+    color: '#8B9BA8',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  setupWalletButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00D9FF',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    gap: 8,
+  },
+  setupWalletButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0A1F2B',
+  },
+  emptyActivity: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1A3544',
+    borderRadius: 16,
+    padding: 32,
+    borderWidth: 1,
+    borderColor: '#2D4A5C',
+  },
+  emptyActivityTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyActivitySubtitle: {
+    fontSize: 14,
+    color: '#8B9BA8',
+    textAlign: 'center',
   },
   header: {
     padding: 20,
@@ -246,7 +388,18 @@ const styles = StyleSheet.create({
   balanceKes: {
     fontSize: 18,
     color: '#00D9FF',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  hbarBalanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  hbarBalance: {
+    fontSize: 14,
+    color: '#9333ea',
+    fontWeight: '600',
   },
   progressBar: {
     height: 6,

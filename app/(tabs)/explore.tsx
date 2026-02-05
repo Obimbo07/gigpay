@@ -1,6 +1,9 @@
+import { useWallet } from '@/hooks/use-wallet';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
+    ActivityIndicator,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -8,18 +11,81 @@ import {
 } from 'react-native';
 
 export default function StatsScreen() {
-  // Mock data - replace with actual data
-  const stats = {
-    totalEarnings: 2540.50,
-    totalWithdrawals: 1300.00,
-    totalGigs: 18,
-    averageGigValue: 141.14,
-    thisMonthEarnings: 850.00,
-    yieldEarned: 45.32,
-  };
+  const { wallet, transactions, isLoading, refreshWallet, refreshTransactions } = useWallet();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  // Calculate real stats from transactions
+  const stats = React.useMemo(() => {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let totalEarnings = 0;
+    let totalWithdrawals = 0;
+    let thisMonthEarnings = 0;
+    let yieldEarned = 0;
+    let gigCount = 0;
+
+    transactions.forEach(tx => {
+      if (tx.status === 'completed') {
+        const txDate = new Date(tx.created_at);
+        
+        if (tx.type === 'credit' || tx.type === 'deposit') {
+          totalEarnings += tx.amount;
+          if (txDate >= thisMonthStart) {
+            thisMonthEarnings += tx.amount;
+          }
+          if (tx.type === 'credit') {
+            gigCount++;
+          }
+        } else if (tx.type === 'withdrawal' || tx.type === 'debit') {
+          totalWithdrawals += tx.amount;
+        } else if (tx.type === 'yield') {
+          yieldEarned += tx.amount;
+          totalEarnings += tx.amount;
+          if (txDate >= thisMonthStart) {
+            thisMonthEarnings += tx.amount;
+          }
+        }
+      }
+    });
+
+    return {
+      totalEarnings,
+      totalWithdrawals,
+      totalGigs: gigCount,
+      averageGigValue: gigCount > 0 ? totalEarnings / gigCount : 0,
+      thisMonthEarnings,
+      yieldEarned,
+    };
+  }, [transactions]);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refreshWallet(), refreshTransactions()]);
+    setRefreshing(false);
+  }, [refreshWallet, refreshTransactions]);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#00D9FF" />
+        <Text style={styles.loadingText}>Loading statistics...</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#00D9FF"
+          colors={['#00D9FF']}
+        />
+      }
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Statistics</Text>
@@ -78,36 +144,38 @@ export default function StatsScreen() {
         <View style={styles.chartPlaceholder}>
           <Ionicons name="bar-chart" size={48} color="#2D4A5C" />
           <Text style={styles.chartPlaceholderText}>
-            Chart visualization coming soon
+            {transactions.length === 0 
+              ? 'Start earning to see your trends' 
+              : 'Chart visualization coming soon'
+            }
           </Text>
         </View>
       </View>
 
-      {/* Top Earning Categories */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Top Categories</Text>
-        <View style={styles.categoryItem}>
-          <View style={styles.categoryLeft}>
-            <Ionicons name="color-palette" size={24} color="#00D9FF" />
-            <Text style={styles.categoryName}>UI/UX Design</Text>
+      {/* Categories - Hidden when no data */}
+      {stats.totalGigs > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Top Categories</Text>
+          <View style={styles.emptyState}>
+            <Ionicons name="briefcase-outline" size={48} color="#8B9BA8" />
+            <Text style={styles.emptyStateText}>
+              Category tracking coming soon
+            </Text>
           </View>
-          <Text style={styles.categoryValue}>$950.00</Text>
         </View>
-        <View style={styles.categoryItem}>
-          <View style={styles.categoryLeft}>
-            <Ionicons name="code-slash" size={24} color="#00D9FF" />
-            <Text style={styles.categoryName}>Web Development</Text>
+      )}
+
+      {transactions.length === 0 && (
+        <View style={styles.section}>
+          <View style={styles.emptyState}>
+            <Ionicons name="stats-chart-outline" size={64} color="#8B9BA8" />
+            <Text style={styles.emptyStateTitle}>No Statistics Yet</Text>
+            <Text style={styles.emptyStateText}>
+              Complete your first gig to see your earnings statistics
+            </Text>
           </View>
-          <Text style={styles.categoryValue}>$780.00</Text>
         </View>
-        <View style={styles.categoryItem}>
-          <View style={styles.categoryLeft}>
-            <Ionicons name="create" size={24} color="#00D9FF" />
-            <Text style={styles.categoryName}>Content Writing</Text>
-          </View>
-          <Text style={styles.categoryValue}>$560.50</Text>
-        </View>
-      </View>
+      )}
     </ScrollView>
   );
 }
@@ -116,6 +184,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0A1F2B',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8B9BA8',
   },
   header: {
     padding: 20,
@@ -232,5 +309,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#00D9FF',
+  },
+  emptyState: {
+    backgroundColor: '#1A3544',
+    borderRadius: 16,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#2D4A5C',
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#8B9BA8',
+    textAlign: 'center',
+    marginTop: 12,
   },
 });

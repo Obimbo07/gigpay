@@ -23,6 +23,25 @@ export type KYC = Database['public']['Tables']['kyc']['Row'];
 export type KYCInsert = Database['public']['Tables']['kyc']['Insert'];
 export type KYCUpdate = Database['public']['Tables']['kyc']['Update'];
 
+// Transaction types
+export type TransactionType = 'credit' | 'debit' | 'yield' | 'withdrawal' | 'deposit';
+export type TransactionStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+export type Transaction = Database['public']['Tables']['transactions']['Row'];
+export type TransactionInsert = Database['public']['Tables']['transactions']['Insert'];
+export type TransactionUpdate = Database['public']['Tables']['transactions']['Update'];
+
+// Wallet info type
+export type WalletInfo = {
+  hedera_account_id: string | null;
+  hedera_public_key: string | null;
+  wallet_created_at: string | null;
+  balance: number; // USDC balance
+  hbar_balance: number; // HBAR balance
+  has_wallet: boolean;
+  last_updated?: Date;
+};
+
 // Image validation constants
 export const IMAGE_VALIDATION = {
   DOCUMENT: {
