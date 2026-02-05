@@ -2,23 +2,23 @@ import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase';
 import { DocumentType, KYCStatus } from '@/types';
 import {
-    compressImage,
-    generateKYCFilename,
-    validateKYCDocument
+  compressImage,
+  generateKYCFilename,
+  validateKYCDocument
 } from '@/utils/image-validation';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 type UploadStep = 'document-type' | 'document-upload' | 'selfie-upload' | 'review';
@@ -197,24 +197,34 @@ export default function KYCVerificationScreen() {
       const selfieBlob = await fetch(selfieUri).then((r) => r.blob());
 
       // Upload document
-      const { error: docUploadError } = await supabase.storage
+      console.log('Uploading document:', documentFilename);
+      const { data: docData, error: docUploadError } = await supabase.storage
         .from('kyc-documents')
         .upload(documentFilename, documentBlob, {
           contentType: 'image/jpeg',
           upsert: false,
         });
 
-      if (docUploadError) throw docUploadError;
+      if (docUploadError) {
+        console.error('Document upload error:', docUploadError);
+        throw new Error(`Document upload failed: ${docUploadError.message}`);
+      }
+      console.log('Document uploaded successfully:', docData);
 
       // Upload selfie
-      const { error: selfieUploadError } = await supabase.storage
+      console.log('Uploading selfie:', selfieFilename);
+      const { data: selfieData, error: selfieUploadError } = await supabase.storage
         .from('kyc-selfies')
         .upload(selfieFilename, selfieBlob, {
           contentType: 'image/jpeg',
           upsert: false,
         });
 
-      if (selfieUploadError) throw selfieUploadError;
+      if (selfieUploadError) {
+        console.error('Selfie upload error:', selfieUploadError);
+        throw new Error(`Selfie upload failed: ${selfieUploadError.message}`);
+      }
+      console.log('Selfie uploaded successfully:', selfieData);
 
       // Create KYC record in database
       const { error: kycError } = await supabase.from('kyc').insert({
