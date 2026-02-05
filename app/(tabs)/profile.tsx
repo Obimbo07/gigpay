@@ -143,7 +143,7 @@ export default function ProfileScreen() {
         <Text style={styles.cardTitle}>KYC Verification</Text>
 
         {isLoadingKYC ? (
-          <ActivityIndicator size="small" color="#007AFF" style={styles.loader} />
+          <ActivityIndicator size="small" color="#00D9FF" style={styles.loader} />
         ) : (
           <>
             <View style={styles.kycStatusContainer}>
@@ -229,7 +229,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0A1F2B',
   },
   scrollContent: {
     padding: 16,
@@ -241,24 +241,21 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#FFFFFF',
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1A3544',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#2D4A5C',
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#000',
+    color: '#FFFFFF',
   },
   infoRow: {
     flexDirection: 'row',
@@ -266,16 +263,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#2D4A5C',
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#8B9BA8',
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
     flex: 1,
     textAlign: 'right',
   },
@@ -290,7 +287,7 @@ const styles = StyleSheet.create({
   },
   kycStatusLabel: {
     fontSize: 16,
-    color: '#666',
+    color: '#8B9BA8',
   },
   kycStatusBadge: {
     paddingHorizontal: 16,
@@ -303,78 +300,77 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   rejectionContainer: {
-    backgroundColor: '#fff5f5',
+    backgroundColor: '#3A1F1F',
     padding: 12,
     borderRadius: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#dc3545',
+    borderLeftColor: '#FF4757',
     marginBottom: 16,
   },
   rejectionLabel: {
     fontSize: 12,
-    color: '#dc3545',
+    color: '#FF4757',
     fontWeight: '600',
     marginBottom: 4,
   },
   rejectionReason: {
     fontSize: 14,
-    color: '#666',
+    color: '#8B9BA8',
   },
   kycButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#00D9FF',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     marginTop: 16,
   },
   kycButtonText: {
-    color: '#fff',
+    color: '#0A1F2B',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
   kycNote: {
     fontSize: 12,
-    color: '#666',
+    color: '#8B9BA8',
     marginTop: 12,
     fontStyle: 'italic',
   },
   actionsCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1A3544',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#2D4A5C',
   },
   actionButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0A1F2B',
     padding: 14,
     borderRadius: 8,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#2D4A5C',
   },
   actionButtonText: {
-    color: '#000',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },
   signOutButton: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#FF4757',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   signOutButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
   userId: {
     fontSize: 10,
-    color: '#999',
+    color: '#6B7B88',
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 24,

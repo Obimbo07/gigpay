@@ -20,6 +20,8 @@ type AuthContextType = {
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  pendingProfileData: Partial<Profile> | null;
+  setPendingProfileData: (data: Partial<Profile> | null) => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,6 +34,8 @@ const AuthContext = createContext<AuthContextType>({
   signInWithGoogle: async () => ({ error: null }),
   signOut: async () => {},
   refreshProfile: async () => {},
+  pendingProfileData: null,
+  setPendingProfileData: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -39,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingProfileData, setPendingProfileData] = useState<Partial<Profile> | null>(null);
 
   // Fetch user profile from database
   const fetchProfile = async (userId: string) => {
@@ -94,7 +99,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          // Try to fetch existing profile
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (existingProfile) {
+            setProfile(existingProfile);
+          } else if (pendingProfileData) {
+            // Create profile if we have pending data (from signup)
+            await createProfile(session.user.id, pendingProfileData);
+            setPendingProfileData(null);
+          } else {
+            // Fetch or create profile
+            await fetchProfile(session.user.id);
+          }
         } else {
           setProfile(null);
         }
@@ -113,10 +134,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { method, email, phone, password, fullName, countryCode } = data;
 
-      let authData: any = { password };
+      let authData: any = { 
+        password,
+        options: {
+          emailRedirectTo: undefined, // Disable email confirmation link
+        },
+      };
 
       if (method === 'email' && email) {
         authData.email = email.toLowerCase().trim();
+        // Use email OTP instead of magic link
+        authData.options.shouldCreateUser = true;
       } else if (method === 'phone' && phone && countryCode) {
         // Format phone to E.164
         const e164Phone = formatPhoneToE164(phone, countryCode);
@@ -125,14 +153,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: new Error('Invalid signup data') };
       }
 
-      // Sign up user
+      // Sign up user - this will send an OTP code to email
       const { data: authResult, error: signUpError } = await supabase.auth.signUp(authData);
 
       if (signUpError) return { error: signUpError };
 
-      // Create profile if user was created
+      // Store profile data to be created after email verification
       if (authResult.user) {
-        await createProfile(authResult.user.id, {
+        setPendingProfileData({
           email: email?.toLowerCase().trim() || null,
           phone: authData.phone || null,
           full_name: fullName || null,
@@ -255,6 +283,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     signOut,
     refreshProfile,
+    pendingProfileData,
+    setPendingProfileData,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

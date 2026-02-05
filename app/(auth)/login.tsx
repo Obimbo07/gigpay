@@ -1,38 +1,28 @@
-import { PhoneInputWrapper } from '@/components/phone-input-wrapper';
 import { useAuth } from '@/contexts/auth-context';
-import { AuthMethod } from '@/types';
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function LoginScreen() {
   const { signIn, signInWithGoogle } = useAuth();
-  const [method, setMethod] = useState<AuthMethod>('email');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [formattedPhone, setFormattedPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const phoneInputRef = React.useRef<any>(null);
 
   const handleSignIn = async () => {
-    if (method === 'email' && !email) {
+    if (!email) {
       Alert.alert('Error', 'Please enter your email');
-      return;
-    }
-    if (method === 'phone' && !phone) {
-      Alert.alert('Error', 'Please enter your phone number');
       return;
     }
     if (!password) {
@@ -42,9 +32,8 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     const { error } = await signIn({
-      method,
-      email: method === 'email' ? email : undefined,
-      phone: method === 'phone' ? formattedPhone : undefined,
+      method: 'email',
+      email,
       password,
     });
     setIsLoading(false);
@@ -76,56 +65,22 @@ export default function LoginScreen() {
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
 
-          {/* Method Toggle */}
-          <View style={styles.methodToggle}>
-            <TouchableOpacity
-              style={[styles.methodButton, method === 'email' && styles.methodButtonActive]}
-              onPress={() => setMethod('email')}
-            >
-              <Text style={[styles.methodText, method === 'email' && styles.methodTextActive]}>
-                Email
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.methodButton, method === 'phone' && styles.methodButtonActive]}
-              onPress={() => setMethod('phone')}
-            >
-              <Text style={[styles.methodText, method === 'phone' && styles.methodTextActive]}>
-                Phone
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Input Fields */}
-          {method === 'email' ? (
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
-          ) : (
-            <View style={styles.phoneInputContainer}>
-              <PhoneInputWrapper
-                ref={phoneInputRef}
-                value={phone}
-                defaultCode="KE"
-                onChangeText={setPhone}
-                onChangeFormattedText={setFormattedPhone}
-                containerStyle={styles.phoneContainer}
-                textContainerStyle={styles.phoneTextContainer}
-                textInputStyle={styles.phoneInput}
-                codeTextStyle={styles.phoneCode}
-              />
-            </View>
-          )}
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#6B7B88"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+          />
 
           <TextInput
             style={styles.input}
             placeholder="Password"
+            placeholderTextColor="#6B7B88"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -180,7 +135,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#0A1F2B',
   },
   scrollContent: {
     flexGrow: 1,
@@ -194,70 +149,27 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#000',
+    color: '#FFFFFF',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#8B9BA8',
     marginBottom: 32,
-  },
-  methodToggle: {
-    flexDirection: 'row',
-    marginBottom: 24,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5',
-    padding: 4,
-  },
-  methodButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  methodButtonActive: {
-    backgroundColor: '#007AFF',
-  },
-  methodText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '600',
-  },
-  methodTextActive: {
-    color: '#fff',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: '#2D4A5C',
+    borderRadius: 12,
     padding: 16,
     fontSize: 16,
     marginBottom: 16,
-    backgroundColor: '#fff',
-  },
-  phoneInputContainer: {
-    marginBottom: 16,
-  },
-  phoneContainer: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-  },
-  phoneTextContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-  },
-  phoneInput: {
-    fontSize: 16,
-  },
-  phoneCode: {
-    fontSize: 16,
+    backgroundColor: '#1A3544',
+    color: '#FFFFFF',
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#00D9FF',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
   },
@@ -265,9 +177,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: '#0A1F2B',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   divider: {
     flexDirection: 'row',
@@ -277,23 +189,23 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#ddd',
+    backgroundColor: '#2D4A5C',
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#666',
+    color: '#8B9BA8',
     fontSize: 14,
   },
   googleButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1A3544',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#2D4A5C',
   },
   googleButtonText: {
-    color: '#000',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -303,11 +215,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   footerText: {
-    color: '#666',
+    color: '#8B9BA8',
     fontSize: 14,
   },
   link: {
-    color: '#007AFF',
+    color: '#00D9FF',
     fontSize: 14,
     fontWeight: '600',
   },

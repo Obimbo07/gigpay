@@ -9,7 +9,7 @@ import {
     View,
 } from 'react-native';
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
   const { user } = useAuth();
 
   // Mock data - replace with actual data from your backend
@@ -64,10 +64,8 @@ export default function HomeScreen() {
           <View style={styles.profileCircle}>
             <Ionicons name="person" size={24} color="#00D9FF" />
           </View>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>HEDERA NETWORK</Text>
-            <Text style={styles.dashboardTitle}>Dashboard</Text>
-          </View>
+          <Text style={styles.headerTitle}>HEDERA NETWORK</Text>
+          <Text style={styles.dashboardTitle}>Dashboard</Text>
           <TouchableOpacity style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
           </TouchableOpacity>
@@ -183,6 +181,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    position: 'relative',
   },
   profileCircle: {
     width: 50,
@@ -191,22 +190,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A3544',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 16,
+    position: 'absolute',
+    left: 0,
   },
   headerTitle: {
     fontSize: 12,
     color: '#00D9FF',
     fontWeight: '600',
-    marginBottom: 4,
+    textAlign: 'center',
+    flex: 1,
   },
   dashboardTitle: {
     fontSize: 24,
     color: '#FFFFFF',
     fontWeight: 'bold',
+    textAlign: 'center',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 20,
   },
   notificationButton: {
     width: 50,
@@ -215,6 +217,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A3544',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'absolute',
+    right: 0,
   },
   balanceCard: {
     marginHorizontal: 20,
