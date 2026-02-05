@@ -1,12 +1,16 @@
 import { useAuth } from '@/contexts/auth-context';
+import { useWallet } from '@/hooks/use-wallet';
+import { getFaucetUrl } from '@/lib/hedera';
 import { supabase } from '@/lib/supabase';
 import { KYC, KYCStatus } from '@/types';
 import { parseE164ToDisplay } from '@/utils/phone-validation';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Linking,
     ScrollView,
     StyleSheet,
     Text,
@@ -16,6 +20,7 @@ import {
 
 export default function ProfileScreen() {
   const { user, profile, signOut, refreshProfile } = useAuth();
+  const { wallet, retryUsdcAssociation } = useWallet();
   const [kycData, setKycData] = useState<KYC | null>(null);
   const [isLoadingKYC, setIsLoadingKYC] = useState(true);
 
@@ -210,6 +215,101 @@ export default function ProfileScreen() {
         )}
       </View>
 
+      {/* Wallet Settings */}
+      {wallet?.hedera_account_id && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Wallet</Text>
+          
+          {/* Account ID */}
+          <View style={styles.infoItem}>
+            <View style={styles.settingIconContainer}>
+              <Ionicons name="wallet" size={24} color="#00D9FF" />
+            </View>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingTitle}>Hedera Account</Text>
+              <Text style={styles.settingDescription}>{wallet.hedera_account_id}</Text>
+            </View>
+          </View>
+
+          {/* USDC Balance */}
+          <View style={styles.infoItem}>
+            <View style={styles.settingIconContainer}>
+              <Ionicons name="logo-usd" size={24} color="#00D9FF" />
+            </View>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingTitle}>USDC Balance</Text>
+              <Text style={[styles.settingDescription, { color: '#00D9FF', fontWeight: '600' }]}>
+                {wallet.balance?.toFixed(2) || '0.00'} USDC
+              </Text>
+            </View>
+          </View>
+
+          {/* HBAR Balance */}
+          <View style={styles.infoItem}>
+            <View style={styles.settingIconContainer}>
+              <Ionicons name="flash" size={24} color="#9333ea" />
+            </View>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingTitle}>HBAR Balance</Text>
+              <Text style={[styles.settingDescription, { color: '#9333ea', fontWeight: '600' }]}>
+                {wallet.hbar_balance?.toFixed(4) || '0.0000'} ℏ
+              </Text>
+            </View>
+          </View>
+
+          {/* Last Updated */}
+          {wallet.last_updated && (
+            <View style={styles.infoItem}>
+              <View style={styles.settingIconContainer}>
+                <Ionicons name="time-outline" size={24} color="#8B9BA8" />
+              </View>
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingTitle}>Last Updated</Text>
+                <Text style={styles.settingDescription}>
+                  {new Date(wallet.last_updated).toLocaleString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                  })}
+                </Text>
+              </View>
+            </View>
+          )}
+          
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={retryUsdcAssociation}
+          >
+            <View style={styles.settingIconContainer}>
+              <Ionicons name="refresh" size={24} color="#00D9FF" />
+            </View>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingTitle}>Enable USDC</Text>
+              <Text style={styles.settingDescription}>
+                Associate USDC token with your wallet
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#8B9BA8" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => Linking.openURL(getFaucetUrl())}
+          >
+            <View style={styles.settingIconContainer}>
+              <Ionicons name="water" size={24} color="#00D9FF" />
+            </View>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingTitle}>Get Test HBAR</Text>
+              <Text style={styles.settingDescription}>
+                Fund your account from Hedera faucet
+              </Text>
+            </View>
+            <Ionicons name="open-outline" size={20} color="#8B9BA8" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Actions */}
       <View style={styles.actionsCard}>
         <TouchableOpacity style={styles.actionButton} onPress={refreshProfile}>
@@ -334,6 +434,42 @@ const styles = StyleSheet.create({
     color: '#8B9BA8',
     marginTop: 12,
     fontStyle: 'italic',
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D4A5C',
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D4A5C',
+  },
+  settingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  settingTextContainer: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: 13,
+    color: '#8B9BA8',
   },
   actionsCard: {
     backgroundColor: '#1A3544',

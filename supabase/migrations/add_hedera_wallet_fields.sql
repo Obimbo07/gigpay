@@ -5,7 +5,9 @@
 ALTER TABLE public.profiles
 ADD COLUMN IF NOT EXISTS hedera_account_id TEXT,
 ADD COLUMN IF NOT EXISTS hedera_public_key TEXT,
-ADD COLUMN IF NOT EXISTS wallet_created_at TIMESTAMPTZ;
+ADD COLUMN IF NOT EXISTS wallet_created_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS usdc_associated BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS usdc_prompt_dismissed BOOLEAN DEFAULT false;
 
 -- Add index for Hedera account lookups
 CREATE INDEX IF NOT EXISTS idx_profiles_hedera_account_id 

@@ -20,6 +20,8 @@ export interface Database {
           hedera_account_id: string | null
           hedera_public_key: string | null
           wallet_created_at: string | null
+          usdc_associated: boolean | null
+          usdc_prompt_dismissed: boolean | null
           created_at: string
           updated_at: string
         }
@@ -33,6 +35,8 @@ export interface Database {
           hedera_account_id?: string | null
           hedera_public_key?: string | null
           wallet_created_at?: string | null
+          usdc_associated?: boolean | null
+          usdc_prompt_dismissed?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -46,6 +50,8 @@ export interface Database {
           hedera_account_id?: string | null
           hedera_public_key?: string | null
           wallet_created_at?: string | null
+          usdc_associated?: boolean | null
+          usdc_prompt_dismissed?: boolean | null
           created_at?: string
           updated_at?: string
         }

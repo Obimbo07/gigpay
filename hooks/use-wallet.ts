@@ -2,11 +2,12 @@
 // Hook for managing Hedera wallet state and operations
 
 import { useAuth } from '@/contexts/auth-context';
-import { createHederaAccount, HederaAccountResult } from '@/lib/hedera';
+import { autoAssociateUsdc, createHederaAccount, fetchAccountBalances, getFaucetUrl, HederaAccountResult } from '@/lib/hedera';
 import { supabase } from '@/lib/supabase';
 import { Transaction, WalletInfo } from '@/types';
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useState } from 'react';
+import { Alert, Linking } from 'react-native';
 
 const PRIVATE_KEY_STORAGE_KEY = 'hedera_private_key';
 
@@ -21,6 +22,7 @@ export type UseWalletReturn = {
   refreshWallet: () => Promise<void>;
   refreshTransactions: () => Promise<void>;
   getPrivateKey: () => Promise<string | null>;
+  retryUsdcAssociation: () => Promise<void>;
 };
 
 export function useWallet(): UseWalletReturn {
@@ -54,19 +56,38 @@ export function useWallet(): UseWalletReturn {
 
       if (profileError) throw profileError;
 
-      // Get balance from user_balances view
-      const { data: balanceData } = await supabase
-        .from('user_balances')
-        .select('balance')
-        .eq('user_id', user.id)
-        .single();
+      // If wallet exists, fetch real-time balances from Mirror Node
+      let usdcBalance = 0;
+      let hbarBalance = 0;
+      let lastUpdated = new Date();
+
+      if (profileData?.hedera_account_id) {
+        try {
+          const balances = await fetchAccountBalances(profileData.hedera_account_id);
+          usdcBalance = balances.usdc;
+          hbarBalance = balances.hbar;
+          lastUpdated = balances.lastUpdated;
+        } catch (balanceError) {
+          console.warn('Failed to fetch Mirror Node balances:', balanceError);
+          // Fall back to Supabase balance
+          const { data: balanceData } = await supabase
+            .from('user_balances')
+            .select('balance')
+            .eq('user_id', user.id)
+            .single();
+          
+          usdcBalance = balanceData?.balance || 0;
+        }
+      }
 
       setWallet({
         hedera_account_id: profileData?.hedera_account_id || null,
         hedera_public_key: profileData?.hedera_public_key || null,
         wallet_created_at: profileData?.wallet_created_at || null,
-        balance: balanceData?.balance || 0,
+        balance: usdcBalance,
+        hbar_balance: hbarBalance,
         has_wallet: !!profileData?.hedera_account_id,
+        last_updated: lastUpdated,
       });
     } catch (err: any) {
       console.error('Error fetching wallet:', err);
@@ -82,6 +103,7 @@ export function useWallet(): UseWalletReturn {
           hedera_public_key: profile.hedera_public_key || null,
           wallet_created_at: profile.wallet_created_at || null,
           balance: 0,
+          hbar_balance: 0,
           has_wallet: true,
         });
       }
@@ -137,9 +159,10 @@ export function useWallet(): UseWalletReturn {
       // Store private key securely on device
       if (result.privateKey) {
         await SecureStore.setItemAsync(PRIVATE_KEY_STORAGE_KEY, result.privateKey);
+        await SecureStore.setItemAsync('hedera_account_id', result.accountId);
       }
 
-      // Save account info to Supabase profile
+      // Save account info to Supabase profile first
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -150,6 +173,33 @@ export function useWallet(): UseWalletReturn {
         .eq('id', user.id);
 
       if (updateError) throw updateError;
+
+      // Fund the new account BEFORE attempting USDC association
+      console.log('Funding new account with 0.5 HBAR...');
+      const fundingResponse = await supabase.functions.invoke('fund-new-account', {
+        body: { accountId: result.accountId }
+      });
+
+      if (fundingResponse.error) {
+        console.error('Error funding new account:', fundingResponse.error);
+        // Continue anyway - banner will show retry option
+      } else {
+        console.log('Account funded successfully');
+        // Wait a moment for the transfer to be processed
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      // Auto-associate USDC token (silently - banner will handle UI)
+      console.log('Auto-associating USDC token...');
+      const assocResult = await autoAssociateUsdc(result.accountId, result.privateKey);
+      
+      if (!assocResult.success && !assocResult.alreadyAssociated) {
+        // Association failed but account created - log warning
+        // Banner component will handle UI feedback
+        console.warn('USDC association failed:', assocResult.error);
+      } else {
+        console.log('USDC association successful');
+      }
 
       // Refresh wallet state
       await fetchWallet();
@@ -184,6 +234,40 @@ export function useWallet(): UseWalletReturn {
     await fetchTransactions();
   }, [fetchTransactions]);
 
+  // Retry USDC association
+  const retryUsdcAssociation = useCallback(async () => {
+    if (!wallet?.hedera_account_id) {
+      Alert.alert('No Wallet', 'Please create a wallet first');
+      return;
+    }
+
+    setIsCreatingWallet(true);
+    try {
+      const result = await autoAssociateUsdc();
+      
+      if (result.success) {
+        if (result.alreadyAssociated) {
+          Alert.alert('Already Associated', 'USDC token is already associated with your wallet');
+        } else {
+          Alert.alert('Success', 'USDC token associated successfully!');
+        }
+      } else {
+        Alert.alert(
+          'Association Failed',
+          result.error || 'Failed to associate USDC token',
+          [
+            { text: 'Open Faucet', onPress: () => Linking.openURL(getFaucetUrl()) },
+            { text: 'OK' }
+          ]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setIsCreatingWallet(false);
+    }
+  }, [wallet]);
+
   // Initial fetch
   useEffect(() => {
     fetchWallet();
@@ -201,6 +285,7 @@ export function useWallet(): UseWalletReturn {
     refreshWallet,
     refreshTransactions,
     getPrivateKey,
+    retryUsdcAssociation,
   };
 }
 

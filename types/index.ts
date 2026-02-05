@@ -36,8 +36,10 @@ export type WalletInfo = {
   hedera_account_id: string | null;
   hedera_public_key: string | null;
   wallet_created_at: string | null;
-  balance: number;
+  balance: number; // USDC balance
+  hbar_balance: number; // HBAR balance
   has_wallet: boolean;
+  last_updated?: Date;
 };
 
 // Image validation constants

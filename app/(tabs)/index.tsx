@@ -27,6 +27,7 @@ export default function HomeScreen() {
 
   // Get display values from wallet or defaults
   const totalBalance = wallet?.balance ?? 0;
+  const hbarBalance = wallet?.hbar_balance ?? 0;
   const kesEquivalent = totalBalance * 149.50; // Mock rate
   const walletAddress = wallet?.hedera_account_id ?? 'No wallet';
 
@@ -133,8 +134,9 @@ export default function HomeScreen() {
             <Text style={styles.balanceLabel}>Total Balance</Text>
             <Text style={styles.balanceAmount}>{totalBalance.toFixed(2)} USDC</Text>
             <Text style={styles.balanceKes}>≈ {kesEquivalent.toLocaleString()} KES</Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '65%' }]} />
+            <View style={styles.hbarBalanceRow}>
+              <Ionicons name="flash" size={14} color="#9333ea" />
+              <Text style={styles.hbarBalance}>{hbarBalance.toFixed(4)} HBAR</Text>
             </View>
             <Text style={styles.walletAddress}>{walletAddress}</Text>
           </View>
@@ -386,7 +388,18 @@ const styles = StyleSheet.create({
   balanceKes: {
     fontSize: 18,
     color: '#00D9FF',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  hbarBalanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  hbarBalance: {
+    fontSize: 14,
+    color: '#9333ea',
+    fontWeight: '600',
   },
   progressBar: {
     height: 6,
