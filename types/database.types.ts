@@ -17,6 +17,9 @@ export interface Database {
           full_name: string | null
           avatar_url: string | null
           country_code: string | null
+          hedera_account_id: string | null
+          hedera_public_key: string | null
+          wallet_created_at: string | null
           created_at: string
           updated_at: string
         }
@@ -27,6 +30,9 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           country_code?: string | null
+          hedera_account_id?: string | null
+          hedera_public_key?: string | null
+          wallet_created_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -37,6 +43,9 @@ export interface Database {
           full_name?: string | null
           avatar_url?: string | null
           country_code?: string | null
+          hedera_account_id?: string | null
+          hedera_public_key?: string | null
+          wallet_created_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -88,16 +97,88 @@ export interface Database {
           updated_at?: string
         }
       }
+      transactions: {
+        Row: {
+          id: string
+          user_id: string
+          type: 'credit' | 'debit' | 'yield' | 'withdrawal' | 'deposit'
+          status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+          amount: number
+          currency: string
+          title: string
+          description: string | null
+          counterparty: string | null
+          location: string | null
+          hedera_tx_id: string | null
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: 'credit' | 'debit' | 'yield' | 'withdrawal' | 'deposit'
+          status?: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+          amount: number
+          currency?: string
+          title: string
+          description?: string | null
+          counterparty?: string | null
+          location?: string | null
+          hedera_tx_id?: string | null
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: 'credit' | 'debit' | 'yield' | 'withdrawal' | 'deposit'
+          status?: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+          amount?: number
+          currency?: string
+          title?: string
+          description?: string | null
+          counterparty?: string | null
+          location?: string | null
+          hedera_tx_id?: string | null
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
-      [_ in never]: never
+      user_balances: {
+        Row: {
+          user_id: string
+          balance: number
+          total_transactions: number
+          last_activity: string | null
+        }
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_user_wallet: {
+        Args: { user_uuid: string }
+        Returns: {
+          hedera_account_id: string | null
+          hedera_public_key: string | null
+          wallet_created_at: string | null
+          balance: number
+          has_wallet: boolean
+        }[]
+      }
+      get_user_kyc_status: {
+        Args: { user_uuid: string }
+        Returns: 'pending' | 'under_review' | 'verified' | 'rejected' | null
+      }
     }
     Enums: {
       kyc_status: 'pending' | 'under_review' | 'verified' | 'rejected'
       document_type: 'passport' | 'national_id' | 'military_id'
+      transaction_type: 'credit' | 'debit' | 'yield' | 'withdrawal' | 'deposit'
+      transaction_status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
     }
   }
 }

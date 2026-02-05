@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
+    "@hashgraph/sdk": "^2.80.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
@@ -47,6 +48,7 @@
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "supabase": "^2.75.5",
     "typescript": "~5.9.2"
   },
   "private": true
