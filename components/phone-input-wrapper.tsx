@@ -14,9 +14,8 @@ type PhoneInputWrapperProps = {
 };
 
 /**
- * Native-specific phone input component
+ * Phone input component for mobile (Android & iOS)
  * Uses react-native-phone-number-input with full country picker
- * Web uses phone-input-wrapper.web.tsx instead
  */
 export const PhoneInputWrapper = React.forwardRef<any, PhoneInputWrapperProps>(
   (
