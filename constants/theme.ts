@@ -1,29 +1,62 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * GigChain Pay Theme Colors
+ * Dark theme with cyan accents matching the Hedera Network branding
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Brand Colors
+const primaryCyan = '#00D9FF';
+const darkBackground = '#0A1F2B';
+const cardBackground = '#1A3544';
+const secondaryBackground = '#152B38';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: '#FFFFFF',
+    textSecondary: '#8B9BA8',
+    background: darkBackground,
+    surface: cardBackground,
+    card: cardBackground,
+    tint: primaryCyan,
+    primary: primaryCyan,
+    secondary: '#2D4A5C',
+    accent: primaryCyan,
+    success: '#00FF94',
+    error: '#FF4757',
+    warning: '#FFA502',
+    border: '#2D4A5C',
+    icon: '#8B9BA8',
+    tabIconDefault: '#8B9BA8',
+    tabIconSelected: primaryCyan,
+    buttonPrimary: primaryCyan,
+    buttonSecondary: secondaryBackground,
+    inputBackground: '#1A3544',
+    inputBorder: '#2D4A5C',
+    placeholder: '#6B7B88',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#FFFFFF',
+    textSecondary: '#8B9BA8',
+    background: darkBackground,
+    surface: cardBackground,
+    card: cardBackground,
+    tint: primaryCyan,
+    primary: primaryCyan,
+    secondary: '#2D4A5C',
+    accent: primaryCyan,
+    success: '#00FF94',
+    error: '#FF4757',
+    warning: '#FFA502',
+    border: '#2D4A5C',
+    icon: '#8B9BA8',
+    tabIconDefault: '#8B9BA8',
+    tabIconSelected: primaryCyan,
+    buttonPrimary: primaryCyan,
+    buttonSecondary: secondaryBackground,
+    inputBackground: '#1A3544',
+    inputBorder: '#2D4A5C',
+    placeholder: '#6B7B88',
   },
 };
 
