@@ -1,20 +1,19 @@
-// supabase/functions/create-hedera-account/index.ts
-// Server-side Hedera account creation using full SDK
+// supabase/functions/associate-usdc-token/index.ts
+// Server-side USDC token association using full SDK
 // This runs on the server where SDK size doesn't matter
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
-  AccountCreateTransaction,
-  Client,
-  Hbar,
-  PublicKey
+    AccountId,
+    Client,
+    PrivateKey,
+    TokenAssociateTransaction,
+    TokenId
 } from "npm:@hashgraph/sdk@^2.80.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const hederaOperatorId = Deno.env.get("HEDERA_OPERATOR_ID")!;
-const hederaOperatorKey = Deno.env.get("HEDERA_OPERATOR_KEY")!;
 
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -59,13 +58,13 @@ serve(async (req: Request) => {
       });
     }
 
-    // Parse request body - publicKey created client-side
+    // Parse request body
     const body = await req.json();
-    const { publicKey, network = 'testnet' } = body;
+    const { accountId, privateKey, tokenId, network = 'testnet' } = body;
 
-    if (!publicKey) {
+    if (!accountId || !privateKey || !tokenId) {
       return new Response(
-        JSON.stringify({ error: "Missing publicKey" }),
+        JSON.stringify({ error: "Missing accountId, privateKey, or tokenId" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -75,44 +74,29 @@ serve(async (req: Request) => {
       ? Client.forMainnet()
       : Client.forTestnet();
     
-    client.setOperator(hederaOperatorId, hederaOperatorKey);
+    // Note: We don't need an operator for this transaction
+    // The user signs with their own private key
 
-    // Parse the ED25519 public key (hex format from client)
-    // Hedera SDK can parse hex format public keys
-    const publicKeyObj = PublicKey.fromStringED25519(publicKey);
+    // Parse account ID, token ID, and private key
+    const accountIdObj = AccountId.fromString(accountId);
+    const tokenIdObj = TokenId.fromString(tokenId);
+    const privateKeyObj = PrivateKey.fromStringED25519(privateKey);
 
-    // Create new account on Hedera network
-    const accountCreateTx = new AccountCreateTransaction()
-      .setKey(publicKeyObj)
-      .setInitialBalance(new Hbar(0)); // Will be funded separately
+    // Create and execute token association transaction
+    const associateTx = new TokenAssociateTransaction()
+      .setAccountId(accountIdObj)
+      .setTokenIds([tokenIdObj])
+      .freezeWith(client);
 
-    const accountCreateSubmit = await accountCreateTx.execute(client);
-    const accountCreateReceipt = await accountCreateSubmit.getReceipt(client);
-    const newAccountId = accountCreateReceipt.accountId;
+    // Sign with the account's private key
+    const signedTx = await associateTx.sign(privateKeyObj);
 
-    if (!newAccountId) {
-      throw new Error("Failed to get account ID from receipt");
-    }
+    // Execute transaction
+    const txResponse = await signedTx.execute(client);
+    const receipt = await txResponse.getReceipt(client);
 
-    const accountIdString = newAccountId.toString();
-
-    // Store the Hedera account info in the user's profile
-    // Note: Private key should be stored securely on device, not in DB
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        hedera_account_id: accountIdString,
-        hedera_public_key: publicKey,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
-
-    if (updateError) {
-      console.error("Database update error:", updateError);
-      return new Response(
-        JSON.stringify({ error: "Failed to save account data" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
+    if (receipt.status.toString() !== "SUCCESS") {
+      throw new Error(`Token association failed: ${receipt.status.toString()}`);
     }
 
     // Close the Hedera client
@@ -121,8 +105,8 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        accountId: accountIdString,
-        message: "Hedera account created successfully",
+        message: "Token associated successfully",
+        transactionId: txResponse.transactionId.toString(),
       }),
       {
         headers: {
@@ -134,13 +118,23 @@ serve(async (req: Request) => {
     );
   } catch (error) {
     console.error(error);
+    
+    // Handle specific error cases
+    let errorMessage = "Failed to associate token";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "Failed to process request",
+        error: errorMessage,
       }),
       {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
         status: 500,
       }
     );

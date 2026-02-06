@@ -13,10 +13,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.obimbo07.gigpay"
     },
     "web": {
       "bundler": "metro",
@@ -44,11 +45,12 @@
         "origin": false
       },
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "73910dcf-d27c-4de9-8eb5-f0f12606f3f3"
       },
       "hederaOperatorId": "0.0.7809443",
       "hederaOperatorKey": "012a632918296747bf9f5db66ac95ca8e0f6d18014381d1a64daed6af6eccb59",
       "hederaNetwork": "testnet"
-    }
+    },
+    "owner": "obimbo07"
   }
 }

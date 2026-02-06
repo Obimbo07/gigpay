@@ -1,19 +1,10 @@
 // lib/hedera.ts
-// Hedera account creation utility for React Native
+// Hedera REST API client (lightweight - no heavy SDK)
 
-import {
-  AccountCreateTransaction,
-  AccountId,
-  Client,
-  Hbar,
-  HbarUnit,
-  PrivateKey,
-  TokenAssociateTransaction,
-  TokenId,
-} from "@hashgraph/sdk";
-
+import * as ed from '@noble/ed25519';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
+import { supabase } from './supabase';
 
 const HEDERA_TESTNET_OPERATOR_ID = Constants.expoConfig?.extra?.hederaOperatorId;
 const HEDERA_TESTNET_OPERATOR_KEY = Constants.expoConfig?.extra?.hederaOperatorKey;
@@ -26,6 +17,15 @@ const USDC_TOKEN_ID = HEDERA_NETWORK === 'mainnet'
 
 const HEDERA_ACCOUNT_ID_KEY = 'hedera_account_id';
 const HEDERA_PRIVATE_KEY_KEY = 'hedera_private_key';
+
+/**
+ * Helper: Convert Uint8Array to hex string
+ */
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export interface HederaAccountResult {
   success: boolean;
@@ -54,51 +54,40 @@ export interface AccountBalances {
 }
 
 /**
- * Creates a new Hedera testnet account
- * This runs on the client device, avoiding Supabase Edge Function size limits
+ * Creates a new Hedera account using lightweight crypto + backend edge function
+ * Generates keys client-side, account creation handled by backend
  */
 export async function createHederaAccount(): Promise<HederaAccountResult> {
   try {
-    if (!HEDERA_TESTNET_OPERATOR_ID || !HEDERA_TESTNET_OPERATOR_KEY) {
-      throw new Error("Hedera operator credentials not configured");
+    // Generate ED25519 key pair using lightweight @noble library
+    const privateKeyBytes = ed.utils.randomSecretKey();
+    const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
+    
+    // Convert to hex strings
+    const privateKeyHex = ed.etc.bytesToHex(privateKeyBytes);
+    const publicKeyHex = ed.etc.bytesToHex(publicKeyBytes);
+
+    // Call backend edge function to create account on Hedera network
+    const { data, error } = await supabase.functions.invoke('create-hedera-account', {
+      body: { 
+        publicKey: publicKeyHex,
+        network: HEDERA_NETWORK 
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to create account via backend');
     }
 
-    // Initialize Hedera client based on network config
-    const client = HEDERA_NETWORK === 'mainnet' 
-      ? Client.forMainnet() 
-      : Client.forTestnet();
-    
-    // Handle both hex (0x...) and raw key formats
-    let operatorKeyString = HEDERA_TESTNET_OPERATOR_KEY;
-    if (operatorKeyString.startsWith('0x')) {
-      operatorKeyString = operatorKeyString.slice(2);
+    if (!data?.success || !data?.accountId) {
+      throw new Error(data?.error || 'Backend returned no account ID');
     }
-    
-    const operatorKey = PrivateKey.fromStringECDSA(operatorKeyString);
-    client.setOperator(HEDERA_TESTNET_OPERATOR_ID, operatorKey);
 
-    // Generate a new ED25519 key pair for the user
-    const newPrivateKey = PrivateKey.generateED25519();
-
-    // Create the new account (minimal balance = 0 for now)
-    const transaction = await new AccountCreateTransaction()
-      .setKey(newPrivateKey.publicKey)
-      .setInitialBalance(Hbar.from(0.5, HbarUnit.Hbar)) // Give 0.5 HBAR
-      .execute(client);
-
-    // Get the receipt to extract the new account ID
-    const receipt = await transaction.getReceipt(client);
-    const newAccountId = receipt.accountId!.toString();
-
-    // Clean up client
-    client.close();
-
-    // Use Raw format instead of DER - much smaller, fits in SecureStore
     return {
       success: true,
-      accountId: newAccountId,
-      privateKey: newPrivateKey.toStringRaw(),  // Raw format ~64 chars vs DER ~200+ chars
-      publicKey: newPrivateKey.publicKey.toStringRaw(),
+      accountId: data.accountId,
+      privateKey: privateKeyHex,
+      publicKey: publicKeyHex,
     };
   } catch (error: any) {
     console.error("Hedera account creation error:", error);
@@ -141,8 +130,8 @@ export async function isUsdcAssociated(accountId?: string): Promise<boolean> {
 }
 
 /**
- * Associates the USDC token with the user's Hedera account if not already done
- * Runs automatically after creation or on demand
+ * Associates the USDC token with the user's Hedera account
+ * Uses backend edge function to submit transaction
  */
 export async function autoAssociateUsdc(
   accountId?: string,
@@ -164,32 +153,22 @@ export async function autoAssociateUsdc(
       return { success: true, alreadyAssociated: true };
     }
 
-    // Restore keys
-    const userPrivateKey = PrivateKey.fromStringED25519(privateKeyStr);
-    const userAccountId = AccountId.fromString(accountIdStr);
+    // Call backend edge function to associate USDC token
+    const { data, error } = await supabase.functions.invoke('associate-usdc-token', {
+      body: { 
+        accountId: accountIdStr,
+        privateKey: privateKeyStr,
+        tokenId: USDC_TOKEN_ID,
+        network: HEDERA_NETWORK
+      }
+    });
 
-    // Initialize client with user's credentials
-    const client = HEDERA_NETWORK === 'mainnet' 
-      ? Client.forMainnet() 
-      : Client.forTestnet();
-    
-    client.setOperator(userAccountId, userPrivateKey);
+    if (error) {
+      throw new Error(error.message || 'Failed to associate token');
+    }
 
-    // Build and execute association
-    const associateTx = await new TokenAssociateTransaction()
-      .setAccountId(userAccountId)
-      .setTokenIds([TokenId.fromString(USDC_TOKEN_ID)])
-      .freezeWith(client);
-
-    // Sign with user's key
-    const signedTx = await associateTx.sign(userPrivateKey);
-    const txResponse = await signedTx.execute(client);
-    const receipt = await txResponse.getReceipt(client);
-
-    client.close();
-
-    if (receipt.status.toString() !== "SUCCESS") {
-      throw new Error(`Association failed: ${receipt.status}`);
+    if (!data?.success) {
+      throw new Error(data?.error || 'Token association failed');
     }
 
     console.log("USDC token associated successfully");
@@ -220,25 +199,6 @@ export function getFaucetUrl(): string {
   return HEDERA_NETWORK === 'mainnet'
     ? 'https://hedera.com' // Mainnet requires purchasing HBAR
     : 'https://portal.hedera.com/faucet'; // Testnet faucet
-}
-
-/**
- * Generate a key pair without creating an account on-chain
- * Useful for generating keys first, then funding via faucet
- */
-export function generateHederaKeyPair() {
-  const privateKey = PrivateKey.generateED25519();
-  return {
-    privateKey: privateKey.toStringRaw(),
-    publicKey: privateKey.publicKey.toStringRaw(),
-  };
-}
-
-/**
- * Restore a private key from raw string format
- */
-export function restorePrivateKey(rawKey: string): PrivateKey {
-  return PrivateKey.fromStringED25519(rawKey);
 }
 
 /**
